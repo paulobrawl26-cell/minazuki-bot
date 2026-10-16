@@ -854,21 +854,21 @@ async def main():
     print(">>> 1. Старт...", flush=True)
     init_db()
     commands = [
-        BotCommand(command="старт", description="Головне меню"),
-        BotCommand(command="профіль", description="Моя статистика з графіком"),
-        BotCommand(command="дитина", description="👶 Завести дитину (у шлюбі)"),
-        BotCommand(command="вагітність", description="🤰 Стан вагітності (7 днів)"),
-        BotCommand(command="народити", description="🍼 Народити дитину"),
-        BotCommand(command="діти", description="🧸 Мої діти"),
-        BotCommand(command="дитячий_магазин", description="🛍 Магазин товарів для сім'ї"),
-        BotCommand(command="клас", description="🛡️ Обрати клас героя"),
-        BotCommand(command="похід", description="⚔️ Підземелля (5 поверхів)"),
-        BotCommand(command="герой", description="🗡 Профіль RPG героя"),
-        BotCommand(command="магазин", description="🛒 Магазин спорядження"),
-        BotCommand(command="відпочинок", description="🏕 Відновити HP"),
-        BotCommand(command="одружитися", description="Запропонувати шлюб"),
-        BotCommand(command="пара", description="Моя пара"),
-        BotCommand(command="бункер", description="Гра Бункер")
+        BotCommand(command="start", description="Головне меню"),
+        BotCommand(command="profile", description="Моя статистика з графіком"),
+        BotCommand(command="child", description="👶 Завести дитину (у шлюбі)"),
+        BotCommand(command="pregnancy", description="🤰 Стан вагітності (7 днів)"),
+        BotCommand(command="born", description="🍼 Народити дитину"),
+        BotCommand(command="children", description="🧸 Мої діти"),
+        BotCommand(command="shop_family", description="🛍 Магазин товарів для сім'ї"),
+        BotCommand(command="class", description="🛡️ Обрати клас героя"),
+        BotCommand(command="dungeon", description="⚔️ Підземелля (5 поверхів)"),
+        BotCommand(command="hero", description="🗡 Профіль RPG героя"),
+        BotCommand(command="shop", description="🛒 Магазин спорядження"),
+        BotCommand(command="rest", description="🏕 Відновити HP"),
+        BotCommand(command="marry", description="Запропонувати шлюб"),
+        BotCommand(command="couple", description="Моя пара"),
+        BotCommand(command="bunker", description="Гра Бункер")
     ]
     await bot.set_my_commands(commands)
     await bot.delete_webhook(drop_pending_updates=True)
