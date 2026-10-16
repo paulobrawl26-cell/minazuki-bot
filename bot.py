@@ -7,6 +7,7 @@ import sqlite3
 import time
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, BotCommand, BufferedInputFile
+from aiohttp import web
 
 import matplotlib
 matplotlib.use('Agg')
@@ -872,7 +873,11 @@ async def main():
     ]
     await bot.set_my_commands(commands)
     await bot.delete_webhook(drop_pending_updates=True)
-    print(">>> Повний бот запрацював з абсолютно всіма функціями!", flush=True)
+
+      print(">>> Повний бот запрацював з абсолютно всіма функціями!", flush=True)
+    asyncio.create_task(web_server())
+    await dp.start_polling(bot)
+
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
