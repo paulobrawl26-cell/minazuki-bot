@@ -874,7 +874,7 @@ async def main():
     await bot.set_my_commands(commands)
     await bot.delete_webhook(drop_pending_updates=True)
 
-      print(">>> Повний бот запрацював з абсолютно всіма функціями!", flush=True)
+    print(">>> Повний бот запрацював з абсолютно всіма функціями!", flush=True)
     asyncio.create_task(web_server())
     await dp.start_polling(bot)
 
