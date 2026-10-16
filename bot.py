@@ -1,4 +1,5 @@
-﻿import asyncio
+import asyncio
+import os
 import io
 import logging
 import random
@@ -11,7 +12,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-TOKEN = "8807642165:AAEBRId1FL85W_-44DMXumWh24dft45dMds"
+TOKEN = os.getenv("BOT_TOKEN") 
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
