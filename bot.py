@@ -878,7 +878,18 @@ async def main():
     asyncio.create_task(web_server())
     await dp.start_polling(bot)
 
-    await dp.start_polling(bot)
+# --- МІНІ-ВЕБСЕРВЕР ДЛЯ RENDER ---
+async def handle(request):
+    return web.Response(text="Bot is running!")
+
+app = web.Application()
+app.add_routes([web.get("/", handle)])
+
+async def web_server():
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", 10000)
+    await site.start()
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
