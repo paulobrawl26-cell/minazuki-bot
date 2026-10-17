@@ -411,14 +411,14 @@ async def rpg_hero_handler(message: Message):
         f"🛡 Броня: {armor}"
     )
     await message.answer(text)
-
 @router.message(Command("dungeon", "похід", "підземелля"))
 async def rpg_dungeon_handler(message: Message):
     uid = message.from_user.id
     now = time.time()
-if uid in user_last_dungeon and (now - user_last_dungeon[uid]) < RPG_COOLDOWN:
-        rem = int(RPG_COOLDOWN - (now - user_last_dungeon[uid]))
-        return await message.answer(f"⏳ Герой відпочиває. Зачекайте **{rem} сек.** перед наступним походом.")
+
+    if uid in user_last_dungeon and (now - user_last_dungeon[uid]) < RPG_COOLDOWN:
+     rem = int(RPG_COOLDOWN - (now - user_last_dungeon[uid]))
+     return await message.answer(f"⏳ Герой відпочиває. Зачекайте **{rem} сек.** перед наступним походом.")
 
     p = get_rpg_player(uid, message.from_user.first_name)
     _, name, p_class, lvl, exp, hp, max_hp, atk, df, gold, weapon, armor = p
