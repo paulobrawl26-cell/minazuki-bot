@@ -5,14 +5,11 @@ import logging
 import random
 import sqlite3
 import time
-from aiogram import Bot, Dispatcher, F
+from aiogram import Bot, Dispatcher, F, Router
 from aiogram.types import Message, BotCommand, BufferedInputFile
 from aiohttp import web
-from aiogram import Router, F
 from aiogram.enums import ChatType
 from aiogram.filters import Command
-from aiogram.types import Message
-
 router = Router()
 
 # Вставляєте цей блок поряд з іншими хендлерами:
@@ -350,7 +347,7 @@ SHOP_ITEMS = {
 
 # --- ОБРОБНИКИ КОМАНД ---
 
-@dp.message((F.text == "/start") | (F.text == "/старт") | (F.text == "/допомога"))
+@dp.message(Command("start", "старт", "допомога"))
 async def start_handler(message: Message):
     await message.answer(
         "Привіт! Я Minazuki Flood 🤖\n\n"
