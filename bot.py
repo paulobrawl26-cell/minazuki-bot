@@ -8,6 +8,21 @@ import time
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, BotCommand, BufferedInputFile
 from aiohttp import web
+from aiogram import Router, F
+from aiogram.enums import ChatType
+from aiogram.filters import Command
+from aiogram.types import Message
+
+router = Router()
+
+# Вставляєте цей блок поряд з іншими хендлерами:
+@router.message(
+    Command("profile"), 
+    F.chat.type.in_({ChatType.PRIVATE, ChatType.GROUP, ChatType.SUPERGROUP})
+)
+async def cmd_profile(message: Message):
+    # Тут код, який виконує бот (наприклад, виводить профіль гравця)
+    await message.answer("Ваш профіль...")
 
 import matplotlib
 matplotlib.use('Agg')
@@ -17,7 +32,7 @@ TOKEN = os.getenv("BOT_TOKEN")
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
-
+dp.include_router(router)
 # --- СТАН ГРИ В МАФІЮ ---
 mafia_lobby = {}      
 mafia_roles = {}      
