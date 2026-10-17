@@ -5,31 +5,24 @@ import logging
 import random
 import sqlite3
 import time
+
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.types import Message, BotCommand, BufferedInputFile
-from aiohttp import web
 from aiogram.enums import ChatType
 from aiogram.filters import Command
-router = Router()
-
-# Вставляєте цей блок поряд з іншими хендлерами:
-@router.message(
-    Command("profile"), 
-    F.chat.type.in_({ChatType.PRIVATE, ChatType.GROUP, ChatType.SUPERGROUP})
-)
-async def cmd_profile(message: Message):
-    # Тут код, який виконує бот (наприклад, виводить профіль гравця)
-    await message.answer("Ваш профіль...")
+from aiohttp import web
 
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
+# --- ІНІЦІАЛІЗАЦІЯ РОУТЕРА ТА БОТА ---
+router = Router()
 TOKEN = os.getenv("BOT_TOKEN") 
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
-dp.include_router(router)
+
 # --- СТАН ГРИ В МАФІЮ ---
 mafia_lobby = {}      
 mafia_roles = {}      
@@ -230,7 +223,6 @@ def update_rpg_player(user_id: int, **kwargs):
     cursor.execute(f"UPDATE rpg_players SET {fields} WHERE user_id = ?", values)
     conn.commit()
     conn.close()
-
 # --- ВАГІТНІСТЬ ТА ДІТИ ---
 def start_pregnancy(mother_id, mother_name, father_id, father_name):
     conn = sqlite3.connect("minazuki_bot.db")
@@ -283,7 +275,6 @@ def generate_activity_chart(username: str, data_points: list):
     buf.seek(0)
     plt.close(fig)
     return buf.read()
-
 
 # --- БУНКЕР ТА СЮЖЕТНІ ПОВЕРХИ ---
 PROFESSIONS = ["Програміст", "Лікар", "Пожежник", "Кухар", "Еколог", "Психолог", "Будівельник", "Електрик"]
@@ -345,9 +336,9 @@ SHOP_ITEMS = {
 }
 
 
-# --- ОБРОБНИКИ КОМАНД ---
+# ==================== ОБРОБНИКИ КОМАНД (ROUTER) ====================
 
-@dp.message(Command("start", "старт", "допомога"))
+@router.message(Command("start", "старт", "допомога"))
 async def start_handler(message: Message):
     await message.answer(
         "Привіт! Я Minazuki Flood 🤖\n\n"
@@ -371,8 +362,12 @@ async def start_handler(message: Message):
     )
 
 # --- ВИБІР КЛАСУ ТА RPG ---
-@dp.message(F.text == "/клас")
+@router.message(Command("class", "клас"))
 async def choose_class_menu(message: Message):
+    parts = message.text.split(maxsplit=1)
+    if len(parts) > 1:
+        return await set_class_handler(message)
+        
     await message.answer(
         "🛡️ **Оберіть свій клас героя:**\n\n"
         "1️⃣ **Лицар** — високий захист та HP (`/клас лицар`)\n"
@@ -381,7 +376,6 @@ async def choose_class_menu(message: Message):
         "4️⃣ **Лучник** — швидкість і крит. ушкодження (`/клас лучник`)"
     )
 
-@dp.message(F.text.startswith("/клас "))
 async def set_class_handler(message: Message):
     c_name = message.text.split(maxsplit=1)[1].strip().capitalize()
     classes_dict = {
@@ -399,7 +393,7 @@ async def set_class_handler(message: Message):
     update_rpg_player(uid, p_class=c_name, hp=stats["hp"], max_hp=stats["hp"], attack=stats["atk"], defense=stats["def"], weapon=stats["weapon"], armor=stats["armor"])
     await message.answer(f"🎉 Вітаю! Ви успішно обрали клас **{c_name}**! Характеристики оновлено.")
 
-@dp.message((F.text == "/герой") | (F.text == "/персонаж"))
+@router.message(Command("hero", "герой", "персонаж"))
 async def rpg_hero_handler(message: Message):
     p = get_rpg_player(message.from_user.id, message.from_user.first_name)
     _, name, p_class, lvl, exp, hp, max_hp, atk, df, gold, weapon, armor = p
@@ -418,12 +412,11 @@ async def rpg_hero_handler(message: Message):
     )
     await message.answer(text)
 
-@dp.message((F.text == "/похід") | (F.text == "/підземелля"))
+@router.message(Command("dungeon", "похід", "підземелля"))
 async def rpg_dungeon_handler(message: Message):
     uid = message.from_user.id
     now = time.time()
-
-    if uid in user_last_dungeon and (now - user_last_dungeon[uid]) < RPG_COOLDOWN:
+if uid in user_last_dungeon and (now - user_last_dungeon[uid]) < RPG_COOLDOWN:
         rem = int(RPG_COOLDOWN - (now - user_last_dungeon[uid]))
         return await message.answer(f"⏳ Герой відпочиває. Зачекайте **{rem} сек.** перед наступним походом.")
 
@@ -496,7 +489,7 @@ async def rpg_dungeon_handler(message: Message):
         )
         await message.answer_photo(photo=e_img, caption=caption)
 
-@dp.message(F.text == "/магазин")
+@router.message(Command("shop", "магазин"))
 async def rpg_shop_handler(message: Message):
     text = "🛒 **Лавка легендарного спорядження:**\n\n"
     for k, v in SHOP_ITEMS.items():
@@ -507,7 +500,7 @@ async def rpg_shop_handler(message: Message):
     text += "\nКупити: `/купити 1`, `/купити 2` тощо."
     await message.answer_photo(photo=SHOP_IMG, caption=text)
 
-@dp.message(F.text.startswith("/купити"))
+@router.message(Command("buy", "купити"))
 async def rpg_buy_handler(message: Message):
     args = message.text.split()
     if len(args) < 2 or args[1] not in SHOP_ITEMS:
@@ -528,7 +521,7 @@ async def rpg_buy_handler(message: Message):
         update_rpg_player(uid, gold=new_gold, armor=item["name"], defense=df + item["def"])
         await message.answer(f"✅ Успішно придбано **{item['name']}**! 🛡 Захист зріс!")
 
-@dp.message((F.text == "/відпочинок") | (F.text == "/лікування"))
+@router.message(Command("rest", "відпочинок", "лікування"))
 async def rpg_rest_handler(message: Message):
     p = get_rpg_player(message.from_user.id, message.from_user.first_name)
     update_rpg_player(p[0], hp=p[6])
@@ -536,7 +529,7 @@ async def rpg_rest_handler(message: Message):
 
 
 # --- ВАГІТНІСТЬ ТА СІМ'Я ---
-@dp.message((F.text == "/baby") | (F.text == "/дитина"))
+@router.message(Command("baby", "child", "дитина"))
 async def baby_handler(message: Message):
     user = message.from_user
     marriage = get_marriage(user.id)
@@ -564,7 +557,7 @@ async def baby_handler(message: Message):
     else:
         await message.answer("👩‍❤️‍👨 Спроба була, але поки не вдалося. Спробуйте знову через деякий час! 😉")
 
-@dp.message((F.text == "/pregnancy") | (F.text == "/вагітність"))
+@router.message(Command("pregnancy", "вагітність"))
 async def pregnancy_status_handler(message: Message):
     preg = get_pregnancy(message.from_user.id)
     if not preg:
@@ -587,7 +580,7 @@ async def pregnancy_status_handler(message: Message):
             f"💡 Пришвидшити можна в `/дитячий_магазин`!"
         )
 
-@dp.message(F.text.startswith("/народити"))
+@router.message(Command("born", "birth", "народити"))
 async def give_birth_handler(message: Message):
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2:
@@ -606,7 +599,7 @@ async def give_birth_handler(message: Message):
     finish_pregnancy(m_id, f_id, child_name, gender)
     await message.answer(f"👶🎉 **У РОДИНІ ПОПОВНЕННЯ!**\nУ @{m_name} та @{f_name} народився(лася) **{child_name}** ({gender})! ❤️✨")
 
-@dp.message((F.text == "/діти") | (F.text == "/діточки"))
+@router.message(Command("children", "діти", "діточки"))
 async def my_children_handler(message: Message):
     kids = get_children(message.from_user.id)
     if not kids:
@@ -617,7 +610,7 @@ async def my_children_handler(message: Message):
         text += f"• **{name}** ({g})\n"
     await message.answer(text)
 
-@dp.message(F.text == "/дитячий_магазин")
+@router.message(Command("shop_family", "дитячий_магазин"))
 async def baby_shop_handler(message: Message):
     text = (
         "🛍 **Дитячий Магазин та Товари для Сім'ї:**\n\n"
@@ -628,7 +621,7 @@ async def baby_shop_handler(message: Message):
     )
     await message.answer(text)
 
-@dp.message(F.text.startswith("/купити_дитяче"))
+@router.message(Command("buy_baby", "купити_дитяче"))
 async def buy_baby_item(message: Message):
     args = message.text.split()
     if len(args) < 2 or args[1] not in ["1", "2", "3"]:
@@ -637,7 +630,6 @@ async def buy_baby_item(message: Message):
     uid = message.from_user.id
     p = get_rpg_player(uid, message.from_user.first_name)
     gold = p[9]
-
     if args[1] == "1":
         if gold < 100: return await message.answer("❌ Потрібно 100 золота!")
         preg = get_pregnancy(uid)
@@ -662,7 +654,7 @@ async def buy_baby_item(message: Message):
 
 
 # --- РЕАКЦІЇ, СТАТЬ ТА ШЛЮБИ ---
-@dp.message((F.text.startswith("/gender")) | (F.text.startswith("/стать")))
+@router.message(Command("gender", "стать"))
 async def gender_handler(message: Message):
     args = message.text.split()
     if len(args) < 2 or args[1].lower() not in ['ч', 'ж', 'm', 'f']:
@@ -671,37 +663,37 @@ async def gender_handler(message: Message):
     set_user_gender(message.from_user.id, message.from_user.first_name, g_code)
     await message.answer(f"✅ Стать змінено на {'жіночу 👩' if g_code == 'f' else 'чоловічу 👨'}")
 
-@dp.message((F.text == "/hug") | (F.text == "/обійняти"))
+@router.message(Command("hug", "обійняти"))
 async def hug_h(message: Message):
     if message.reply_to_message:
         await message.answer(f"🤗 @{message.from_user.first_name} обійняв(ла) @{message.reply_to_message.from_user.first_name}!")
 
-@dp.message((F.text == "/compliment") | (F.text == "/комплімент"))
+@router.message(Command("compliment", "комплімент"))
 async def comp_h(message: Message):
     if message.reply_to_message:
         await message.answer(f"💖 @{message.from_user.first_name} зробив комплімент @{message.reply_to_message.from_user.first_name}!")
 
-@dp.message((F.text == "/kiss") | (F.text == "/поцілувати"))
+@router.message(Command("kiss", "поцілувати"))
 async def kiss_h(message: Message):
     if message.reply_to_message:
         await message.answer(f"💋 @{message.from_user.first_name} поцілував(ла) @{message.reply_to_message.from_user.first_name}!")
 
-@dp.message((F.text == "/bite") | (F.text == "/кусь"))
+@router.message(Command("bite", "кусь"))
 async def bite_h(message: Message):
     if message.reply_to_message:
         await message.answer(f"🦷 @{message.from_user.first_name} зробив 'кусь' для @{message.reply_to_message.from_user.first_name}!")
 
-@dp.message((F.text == "/pat") | (F.text == "/погладити"))
+@router.message(Command("pat", "погладити"))
 async def pat_h(message: Message):
     if message.reply_to_message:
         await message.answer(f"👋 @{message.from_user.first_name} погладив(ла) @{message.reply_to_message.from_user.first_name}!")
 
-@dp.message((F.text == "/support") | (F.text == "/підтримати"))
+@router.message(Command("support", "підтримати"))
 async def supp_h(message: Message):
     if message.reply_to_message:
         await message.answer(f"🫂 @{message.from_user.first_name} підтримав(ла) @{message.reply_to_message.from_user.first_name}!")
 
-@dp.message((F.text == "/marry") | (F.text == "/одружитися"))
+@router.message(Command("marry", "одружитися"))
 async def marry_handler(message: Message):
     if not message.reply_to_message:
         return await message.answer("⚠️ Використовуйте реплаєм на повідомлення партнера!")
@@ -713,7 +705,7 @@ async def marry_handler(message: Message):
     create_marriage(sender.id, sender.first_name, target.id, target.first_name)
     await message.answer(f"💒 @{sender.first_name} та @{target.first_name} одружилися! 💍✨")
 
-@dp.message((F.text == "/couple") | (F.text == "/пара"))
+@router.message(Command("couple", "pair", "пара"))
 async def couple_handler(message: Message):
     m = get_marriage(message.from_user.id)
     if not m:
@@ -721,14 +713,14 @@ async def couple_handler(message: Message):
     partner = m[3] if message.from_user.id == m[0] else m[1]
     await message.answer(f"💖 Ваша пара: **@{partner}**")
 
-@dp.message((F.text == "/divorce") | (F.text == "/розлучитися"))
+@router.message(Command("divorce", "розлучитися"))
 async def divorce_handler(message: Message):
     if not get_marriage(message.from_user.id):
         return await message.answer("🤷‍♂️ Ви не одружені.")
     break_marriage(message.from_user.id)
     await message.answer("💔 Шлюб розірвано.")
 
-@dp.message((F.text.startswith("/create_family")) | (F.text.startswith("/створити_сімю")))
+@router.message(Command("create_family", "створити_сімю"))
 async def create_fam_handler(message: Message):
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2:
@@ -740,7 +732,8 @@ async def create_fam_handler(message: Message):
 
 
 # --- СТАТИСТИКА ТА ПРОФІЛЬ ---
-@dp.message((F.text.lower() == "хто я") | (F.text == "/whoami") | (F.text == "/stats") | (F.text == "/профіль"))
+@router.message(Command("profile", "whoami", "stats", "профіль"))
+@router.message(F.text.lower() == "хто я")
 async def who_am_i_handler(message: Message):
     target = message.reply_to_message.from_user if message.reply_to_message else message.from_user
     uid, name = target.id, target.first_name
@@ -809,29 +802,29 @@ def get_period_stats(since_time=None):
         total_sum += count
     return res, total_sum
 
-@dp.message((F.text == "/день"))
+@router.message(Command("day", "день"))
 async def stats_day_handler(message: Message):
     top_list, total = get_period_stats(time.time() - 86400)
     await message.answer(f"📊 **Статистика за день:**\n\n{top_list}\nЗагальна кількість: {total}")
 
-@dp.message((F.text == "/тиждень"))
+@router.message(Command("week", "тиждень"))
 async def stats_week_handler(message: Message):
     top_list, total = get_period_stats(time.time() - 604800)
     await message.answer(f"📊 **Статистика за тиждень:**\n\n{top_list}\nЗагальна кількість: {total}")
 
-@dp.message((F.text == "/місяць"))
+@router.message(Command("month", "місяць"))
 async def stats_month_handler(message: Message):
     top_list, total = get_period_stats(time.time() - 2592000)
     await message.answer(f"📊 **Статистика за місяць:**\n\n{top_list}\nЗагальна кількість: {total}")
 
-@dp.message((F.text == "/весь_час"))
+@router.message(Command("all_time", "весь_час"))
 async def stats_all_handler(message: Message):
     top_list, total = get_period_stats(None)
     await message.answer(f"📊 **Статистика за весь час:**\n\n{top_list}\nЗагальна кількість: {total}")
 
 
 # --- РЕПУТАЦІЯ ТА БУНКЕР ---
-@dp.message((F.text == "/bunker") | (F.text == "/бункер"))
+@router.message(Command("bunker", "бункер"))
 async def bunker_handler(message: Message):
     card = (
         f"☢️ **Бункер для {message.from_user.first_name}:**\n"
@@ -843,13 +836,13 @@ async def bunker_handler(message: Message):
     )
     await message.answer(card)
 
-@dp.message(F.reply_to_message & (F.text.lower().in_({"+", "спс", "спасибі", "дякую"})))
+@router.message(F.reply_to_message & (F.text.lower().in_({"+", "спс", "спасибі", "дякую"})))
 async def give_karma_handler(message: Message):
     if message.reply_to_message.from_user.id == message.from_user.id: return
     add_karma(message.reply_to_message.from_user.id, message.reply_to_message.from_user.first_name, 1)
     await message.answer(f"👍 Репутація @{message.reply_to_message.from_user.first_name} підвищена! (+1)")
 
-@dp.message((F.text == "/top") | (F.text == "/топ_репутації"))
+@router.message(Command("top", "top_rep", "топ_репутації"))
 async def top_handler(message: Message):
     top = get_top_users()
     if not top: return await message.answer("🏆 Немає даних.")
@@ -857,19 +850,37 @@ async def top_handler(message: Message):
     for idx, (uname, karma) in enumerate(top, 1): text += f"{idx}. {uname} — {karma} од.\n"
     await message.answer(text)
 
-@dp.message()
+@router.message()
 async def all_messages_handler(message: Message):
     if message.from_user: log_message(message.from_user.id, message.from_user.first_name)
+
+
+# --- ВЕБСЕРВЕР ДЛЯ RENDER ---
+async def handle(request):
+    return web.Response(text="Bot is running!")
+
+app = web.Application()
+app.add_routes([web.get("/", handle)])
+
+async def web_server():
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", 10000)
+    await site.start()
 
 
 # --- ЗАПУСК БОТА ---
 async def main():
     print(">>> 1. Старт...", flush=True)
     init_db()
+    
+    # Підключаємо роутер до диспетчера
+    dp.include_router(router)
+    
     commands = [
         BotCommand(command="start", description="Головне меню"),
         BotCommand(command="profile", description="Моя статистика з графіком"),
-        BotCommand(command="child", description="👶 Завести дитину (у шлюбі)"),
+        BotCommand(command="baby", description="👶 Завести дитину (у шлюбі)"),
         BotCommand(command="pregnancy", description="🤰 Стан вагітності (7 днів)"),
         BotCommand(command="born", description="🍼 Народити дитину"),
         BotCommand(command="children", description="🧸 Мої діти"),
@@ -889,19 +900,6 @@ async def main():
     print(">>> Повний бот запрацював з абсолютно всіма функціями!", flush=True)
     asyncio.create_task(web_server())
     await dp.start_polling(bot)
-
-# --- МІНІ-ВЕБСЕРВЕР ДЛЯ RENDER ---
-async def handle(request):
-    return web.Response(text="Bot is running!")
-
-app = web.Application()
-app.add_routes([web.get("/", handle)])
-
-async def web_server():
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", 10000)
-    await site.start()
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
